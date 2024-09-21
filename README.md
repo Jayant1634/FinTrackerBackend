@@ -1,5 +1,5 @@
 ---
-title: TravelDiarySnay
+title: snayfin
 emoji: 📊
 colorFrom: purple
 colorTo: blue
