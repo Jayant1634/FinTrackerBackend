@@ -23,7 +23,6 @@ jobs:
 
       - name: Initialize and Push to Hugging Face
         run: |
-          git checkout -b main  # Use 'main' branch; change if needed
           git remote add origin https://huggingface.co/spaces/theSnay/snayfin
 
           # Configure Git to use credentials
