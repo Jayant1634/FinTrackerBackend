@@ -1,44 +1,72 @@
+# Use the official Node.js 18 slim image
 FROM node:18-slim
 
-# Install dependencies for MongoDB and other required tools
+# Install necessary packages and MongoDB
+USER root
+
+# Install dependencies for adding MongoDB repository
 RUN apt-get update && \
-    apt-get install -y wget gnupg && \
-    wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" > /etc/apt/sources.list.d/mongodb-org-6.0.list && \
-    apt-get update && \
-    apt-get install -y mongodb-org && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y gnupg wget
 
-# Switch to the node user
-USER node
+# Add MongoDB GPG key
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
 
-# Set environment variables for the user
+# Add MongoDB repository
+RUN echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" > /etc/apt/sources.list.d/mongodb-org-6.0.list
+
+# Install MongoDB and Supervisor
+RUN apt-get update && \
+    apt-get install -y mongodb-org supervisor
+
+# Create MongoDB data directory and set ownership
+RUN mkdir -p /data/db && \
+    chown -R mongodb:mongodb /data/db
+
+# Set environment variables
 ENV HOME=/home/node \
-    PATH=/home/node/.local/bin:$PATH
+    PORT=5000 \
+    MONGODB_URI=mongodb://localhost:27017/yourdbname
 
-# Set the working directory
+# Set working directory
 WORKDIR $HOME/app
 
-# Copy the package.json and package-lock.json files to the working directory
+# Copy package files and install dependencies
 COPY --chown=node:node package*.json ./
+RUN npm install --production
 
-# Install Node.js dependencies
-RUN npm install
-
-# Copy the application code to the working directory
+# Copy the application code
 COPY --chown=node:node . .
 
-# Ensure the ownership of the directory to the node user
-RUN chown -R node:node .
+# Create Supervisor configuration
+RUN echo "\
+[supervisord]\n\
+nodaemon=true\n\
+\n\
+[program:mongod]\n\
+command=/usr/bin/mongod --dbpath /data/db --bind_ip_all\n\
+autostart=true\n\
+autorestart=true\n\
+user=mongodb\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:node_app]\n\
+directory=/home/node/app\n\
+command=node server.js\n\
+autostart=true\n\
+autorestart=true\n\
+user=node\n\
+environment=HOME=\"/home/node\",USER=\"node\",PORT=\"5000\",MONGODB_URI=\"mongodb://localhost:27017/yourdbname\"\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+" > /etc/supervisor/conf.d/supervisord.conf
 
-# Expose the ports the app runs on
-EXPOSE 7860 27017
+# Expose the port your app runs on
+EXPOSE 5000
 
-# Create a script to start both Node.js and MongoDB
-RUN echo '#!/bin/bash\n\
-mongod --fork --logpath /var/log/mongodb/mongod.log --bind_ip_all && \n\
-npm start' > start.sh && chmod +x start.sh
-
-# Command to run the combined processes
-CMD ["./start.sh"]
+# Start Supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
