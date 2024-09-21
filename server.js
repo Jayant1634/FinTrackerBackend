@@ -1,7 +1,7 @@
 const express = require('express');
 const app = require('./app');
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 7860;
 
 // Error handling middleware
 app.use((err, req, res, next) => {
