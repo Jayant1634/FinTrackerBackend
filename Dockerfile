@@ -1,10 +1,10 @@
 FROM node:18-slim
 
-# Install MongoDB
+# Install dependencies for MongoDB and other required tools
 RUN apt-get update && \
-    apt-get install -y gnupg wget && \
-    wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - && \
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" > /etc/apt/sources.list.d/mongodb-org-6.0.list && \
+    apt-get install -y wget gnupg && \
+    wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main" > /etc/apt/sources.list.d/mongodb-org-6.0.list && \
     apt-get update && \
     apt-get install -y mongodb-org && \
     apt-get clean && \
@@ -38,7 +38,7 @@ EXPOSE 7860 27017
 # Create a script to start both Node.js and MongoDB
 RUN echo '#!/bin/bash\n\
 mongod --fork --logpath /var/log/mongodb/mongod.log --bind_ip_all && \n\
-node server.js' > start.sh && chmod +x start.sh
+npm start' > start.sh && chmod +x start.sh
 
 # Command to run the combined processes
 CMD ["./start.sh"]
