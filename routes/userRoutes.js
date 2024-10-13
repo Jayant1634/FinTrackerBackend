@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
 // User Login
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  console.log('Attempting to log in with:', username, password);
+  console.log('Attempting to log in with:', username);
 
   try {
     // Find the user by username
@@ -80,5 +80,23 @@ router.post('/updateBalance', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
+router.get('/getBalance/:userId', async (req, res) => {
+  const { userId } = req.params; // Get the userId from the request parameters
+
+  try {
+    const user = await User.findById(userId); // Find the user by ID
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' }); // If user not found, return a 404 response
+    }
+
+    res.status(200).json({ currentBalance: user.currentBalance }); // Return the user's current balance
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' }); // Handle server errors
+  }
+});
+
 
 module.exports = router;

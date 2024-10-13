@@ -1,4 +1,3 @@
-// routes/transactionRoutes.js
 const express = require('express');
 const mongoose = require('mongoose'); // Import mongoose for ObjectId validation
 const router = express.Router();
@@ -7,32 +6,68 @@ const User = require('../models/user'); // Import User model
 
 // Route to add a transaction
 router.post('/', async (req, res) => {
-  const { userId, category, amount, date } = req.body;
+  const { userId, category, type, amount, date } = req.body;
 
   // Input validation
-  if (!userId || !category || typeof amount !== 'number' || !date) {
+  if (!userId || !category || !type || typeof amount !== 'number' || !date) {
     return res.status(400).json({ message: 'Invalid input data' });
   }
-  // Check if the user exists
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({ message: 'User not found. Please log in again.' });
+
+  if (!['income', 'expense'].includes(type)) {
+    return res.status(400).json({ message: 'Invalid transaction type' });
   }
 
-  const newTransaction = new Transaction({ userId, category, amount, date });
-
   try {
-    // Save the transaction
+    // Check if the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found. Please log in again.' });
+    }
+
+    // Create a new transaction
+    const newTransaction = new Transaction({ userId, category, type, amount, date });
+
+    // Save the new transaction
     const savedTransaction = await newTransaction.save();
 
-    // Update user's current balance
-    await User.findByIdAndUpdate(userId, { $inc: { currentBalance: amount } });
+    // Update user's current balance and total amount spent
+    if (type === 'expense') {
+      user.currentBalance -= amount;
+      user.totalAmountSpent += amount;
+    } else if (type === 'income') {
+      user.currentBalance += amount;
+      // Optionally, you can track total amount received if needed
+    }
+
+    // Save the updated user data
+    await user.save();
 
     console.log('Transaction saved:', savedTransaction);
     res.status(201).json(savedTransaction);
   } catch (error) {
     console.error('Error saving transaction:', error);
     res.status(500).json({ message: 'Failed to add transaction', error: error.message });
+  }
+});
+
+// Route to fetch user's current balance
+router.get('/balance/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  // Ensure userId is valid before querying
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ currentBalance: user.currentBalance });
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    res.status(500).json({ message: 'Failed to fetch balance', error: error.message });
   }
 });
 
