@@ -3,6 +3,19 @@ const bcrypt = require('bcrypt');
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
+const sendOTPEmail = require('../email');
+
+
+var tempOTP = {};
+/*
+{
+"anand@gmail.com" : {
+"otp" : "123456",
+"timeout" : 1234567890
+}
+}
+
+*/
 
 // Password hashing function
 const hashPassword = async (password) => {
@@ -12,10 +25,48 @@ const hashPassword = async (password) => {
 
 // User Registration
 router.post('/register', async (req, res) => {
-  const { name, username, password } = req.body;
+  const { name, username, password ,email} = req.body;
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  sendOTPEmail(email, otp);
+
+  //add timestamp of +15 minutes
+  tempOTP[email] = { otp, timeout: Date.now() + 15 * 60 * 1000,userData:{ name, username, password} };
+
+  //rate limiting of generation of otp
+  if(tempOTP[email].timeout > Date.now()){
+    return res.status(400).json({ message: 'OTP already sent' });
+  }
+
+  console.log(tempOTP);
+  
+});
+
+
+const clearOLDOtp = () => {
+  for (const email in tempOTP) {
+    if (tempOTP[email].timeout < Date.now()) {
+      delete tempOTP[email];
+    }
+  }
+};
+
+router.post('verify-otp',async (req,res) => {
+
+  clearOLDOtp();
 
   try {
     // Check if user already exists
+    const { email,otp } = req.body;
+
+    if(!tempOTP[email]){
+      return res.status(400).json({ message: 'Please Generate OTP first' });
+    }
+
+    if(tempOTP[email].otp !== otp){
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
@@ -25,7 +76,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await hashPassword(password);
 
     // Create a new user with name
-    const newUser = new User({ name, username, password: hashedPassword });
+    const newUser = new User(tempOTP[email].userData);
     await newUser.save();
 
     res.status(201).json({ id: newUser._id, username: newUser.username, name: newUser.name });
@@ -34,6 +85,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Failed to register user' });
   }
 });
+
 
 // User Login
 router.post('/login', async (req, res) => {
