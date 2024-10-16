@@ -3,7 +3,8 @@ const bcrypt = require('bcrypt');
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
-const {sendOTPEmail,setForgetPassEmail} = require('../email');
+const {sendOTPEmail,setForgetPassEmail} = require('../email_appscripts');
+// const {sendOTPEmail,setForgetPassEmail} = require('../email');  purane wala
 
 
 var tempOTP = {};
@@ -14,6 +15,11 @@ var tempOTP = {};
         "timeout" : 1234567890
         }
 }
+*/
+
+var forgetTimeout = new Map();
+
+/*
 
 "ahashketaidsaodadi" :  {
         "email" : "123456",
@@ -22,7 +28,6 @@ var tempOTP = {};
 
 */
 
-var forgetTimeout = new Map();
 
 // Password hashing function
 const hashPassword = async (password) => {
