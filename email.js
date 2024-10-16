@@ -20,7 +20,8 @@ const sendOTPEmail = async (email, otp) => {
       html: `<h2>Your Signup OTP</h2>
              <p>Thank you for signing up! Use the OTP below to complete your registration.</p>
              <h3>${otp}</h3>
-             <p>If you did not request this OTP, please ignore this email.</p>`,
+             <p>If you did not request this OTP, please ignore this email.</p>
+             <p> This Request will expire after <b>5 minutes</b></p>`,
     };
 
     // Send the email
@@ -31,4 +32,26 @@ const sendOTPEmail = async (email, otp) => {
   }
 };
 
-module.exports = sendOTPEmail;
+const setForgetPassEmail = async (email, link) => {
+  try {
+    // Email options
+    const mailOptions = {
+      from: process.env.GMAIL_USER, // Sender address (your Gmail address)
+      to: email, // Recipient email
+      subject: 'Reset Your Password',
+      html: `<h2>Reset Your Password</h2>
+             <p>Click the link below to reset your password.</p>
+             <a href="${link}">Reset Password</a>
+             <p>If you did not request this, please ignore this email.</p>
+             <p> This Request will expire after <b>10 minutes</b></p>`,
+    };
+
+    // Send the email
+    const response = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', response);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
+module.exports = {sendOTPEmail,setForgetPassEmail};
