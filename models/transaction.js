@@ -10,6 +10,7 @@ const TransactionSchema = new mongoose.Schema({
   },
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
+  description: { type: String, default: '' },
 });
 
 module.exports = mongoose.model('Transaction', TransactionSchema);
