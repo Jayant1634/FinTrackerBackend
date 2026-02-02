@@ -9,7 +9,19 @@ const predictionRoutes = require('./routes/predictionRoutes');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// CORS: Allow all origins - critical for HF Spaces where 429 from proxy may lack CORS
+// Our app must add CORS to every response so browser can read errors
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200,
+}));
+
+// Ensure CORS headers on preflight
+app.options('*', cors());
+
 app.use(express.json());
 
 // Routes
